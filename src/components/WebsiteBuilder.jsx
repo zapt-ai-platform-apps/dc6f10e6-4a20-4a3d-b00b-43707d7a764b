@@ -1,10 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createEvent } from '../supabaseClient';
+import WebsiteForm from './WebsiteForm';
+import WebsitePreview from './WebsitePreview';
 
 function WebsiteBuilder() {
   const [details, setDetails] = useState('');
   const [loading, setLoading] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
+  const [previewUrl, setPreviewUrl] = useState('');
+
+  // Create preview URL when generatedCode changes
+  useEffect(() => {
+    if (generatedCode) {
+      const blob = new Blob([generatedCode], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      setPreviewUrl('');
+    }
+  }, [generatedCode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,33 +43,32 @@ function WebsiteBuilder() {
     }
   };
 
+  const handleDownload = () => {
+    const element = document.createElement('a');
+    const file = new Blob([generatedCode], { type: 'text/html' });
+    element.href = URL.createObjectURL(file);
+    element.download = 'generated-website.html';
+    document.body.appendChild(element); // Required for this to work in FireFox
+    element.click();
+    document.body.removeChild(element);
+  };
+
   return (
-    <div className="h-full p-4 w-full max-w-2xl">
+    <div className="h-full p-4 w-full max-w-2xl flex flex-col items-center">
       <h1 className="text-2xl font-bold mb-4 text-center">
         منشئ المواقع والتطبيقات بالذكاء الاصطناعي
       </h1>
-      <form onSubmit={handleSubmit} className="flex flex-col">
-        <textarea
-          className="border p-2 mb-4 rounded-md resize-none h-32 box-border"
-          placeholder="أدخل تفاصيل الموقع أو التطبيق الذي ترغب في إنشائه"
-          value={details}
-          onChange={(e) => setDetails(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="bg-blue-500 text-white py-2 px-4 rounded-md cursor-pointer"
-          disabled={loading}
-        >
-          {loading ? 'جاري الإنشاء...' : 'إنشاء الموقع/التطبيق'}
-        </button>
-      </form>
+      <WebsiteForm
+        details={details}
+        setDetails={setDetails}
+        handleSubmit={handleSubmit}
+        loading={loading}
+      />
       {generatedCode && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-2">النتيجة:</h2>
-          <pre className="bg-gray-100 p-4 rounded-md overflow-auto">
-            <code>{generatedCode}</code>
-          </pre>
-        </div>
+        <WebsitePreview
+          previewUrl={previewUrl}
+          handleDownload={handleDownload}
+        />
       )}
     </div>
   );
